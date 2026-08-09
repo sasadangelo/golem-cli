@@ -1,3 +1,15 @@
+Metadata-Version: 2.4
+Name: golem-cli
+Version: 0.1.0
+Summary: CLI client for the Golem Agent-as-a-Service platform
+Requires-Python: <3.15,>=3.12
+Description-Content-Type: text/markdown
+Requires-Dist: httpx>=0.28.1
+Requires-Dist: pydantic<3,>=2.3
+Requires-Dist: pyyaml>=6.0.3
+Requires-Dist: typer>=0.27.1
+Requires-Dist: websockets>=16.1.1
+
 # golem-cli
 
 Command-line client for the **Golem Agent-as-a-Service** platform.
