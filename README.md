@@ -1,4 +1,4 @@
-# golem-cli
+# Golem CLI
 
 Command-line client for the **Golem Agent-as-a-Service** platform.
 
@@ -7,6 +7,21 @@ agent lifecycle operations and via WebSocket (`websockets`) for interactive
 chat sessions.
 
 ---
+
+## Features
+
+| Feature | Status |
+|---|:---:|
+| Multi-context control plane management (`golem cp add/use/list/remove/status`) | ✅ |
+| Agent sandbox lifecycle — create, list, delete, status (`golem agent create/list/delete/status`) | ✅ |
+| Runner config template generator (`golem agent config --generate`) | ✅ |
+| Interactive WebSocket chat with an agent, with token streaming (`golem chat --id <id>`) | ✅ |
+| Persistent CLI config in `~/.golem/cli/config.yaml` (multi-context, survives restarts) | ✅ |
+| `golem conv` — multi-conversation management (list, new, switch, delete) | 🔜 |
+| `golem agent tasks` — A2A task lifecycle view | 🔜 |
+
+---
+
 
 ## Requirements
 
