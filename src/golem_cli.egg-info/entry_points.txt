@@ -1,2 +1,0 @@
-[console_scripts]
-golem = golem_cli.cli:main
