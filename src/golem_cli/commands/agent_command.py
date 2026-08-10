@@ -100,6 +100,26 @@ class AgentCommand(Command):
         state = data.get("status", "unknown")
         typer.echo(f"Agent {agent_id}  →  {state}")
 
+    def card(self, agent_id: str) -> None:
+        """Retrieve and display the A2A Agent Card for an agent.
+
+        Args:
+            agent_id: The agent's unique identifier.
+        """
+        response = self._client.get(f"/agents/{agent_id}/card")
+        self._raise_for_status(response)
+        data = response.json()
+        typer.echo(f"Agent Card for {agent_id}:")
+        typer.echo(f"  name        : {data.get('name', 'n/a')}")
+        typer.echo(f"  description : {data.get('description', 'n/a')}")
+        typer.echo(f"  version     : {data.get('version', 'n/a')}")
+        typer.echo(f"  endpoint    : {data.get('endpoint', 'n/a')}")
+        skills = data.get("skills", [])
+        skill_ids = ", ".join(s.get("id", "") for s in skills) if skills else "none"
+        typer.echo(f"  skills      : {skill_ids}")
+        caps = data.get("capabilities", {})
+        typer.echo(f"  streaming   : {caps.get('streaming', False)}")
+
     # ------------------------------------------------------------------
     # Runner-config template
     # ------------------------------------------------------------------

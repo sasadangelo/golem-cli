@@ -108,6 +108,14 @@ def agent_status(
     AgentCommand().status(agent_id=agent_id)
 
 
+@agent_app.command("card")
+def agent_card(
+    agent_id: str = typer.Option(..., "--id", "-i", help="Agent ID."),  # noqa: B008
+) -> None:
+    """Display the A2A Agent Card for an agent (skills, capabilities, endpoint)."""
+    AgentCommand().card(agent_id=agent_id)
+
+
 # ---------------------------------------------------------------------------
 # agent config command  (no active CP needed — writes a local file)
 # ---------------------------------------------------------------------------
