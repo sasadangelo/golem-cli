@@ -42,23 +42,41 @@ class AgentCommand(Command):
     # Agent CRUD
     # ------------------------------------------------------------------
 
-    def create(self, config: Path, ttl_seconds: int) -> None:
+    def create(
+        self,
+        config: Path,
+        ttl_seconds: int,
+        agents_md: Path | None = None,
+        skills: list[Path] | None = None,
+    ) -> None:
         """Deploy a new agent sandbox via multipart form upload.
 
         Args:
             config:      Path to the runner YAML configuration file.
             ttl_seconds: Sandbox time-to-live in seconds.
+            agents_md:   Optional path to an AGENTS.md file mounted at /app/AGENTS.md.
+            skills:      Optional list of SKILL.md file paths; each is mounted at
+                         /app/skills/<stem>.md inside the pod.
         """
         raw = yaml.safe_load(config.read_text()) or {}
         runner_cfg = RunnerConfig.from_dict(raw)  # validate structure; raises on bad fields
         name = runner_cfg.agent.name
 
-        with config.open("rb") as fh:
-            response = self._client.post(
-                "/agents",
-                data={"name": name, "ttl_seconds": str(ttl_seconds)},
-                files={"config": (config.name, fh, "application/x-yaml")},
-            )
+        files: list[tuple[str, tuple]] = []
+        # config is always present
+        files.append(("config", (config.name, config.open("rb"), "application/x-yaml")))
+
+        if agents_md is not None:
+            files.append(("agents_md", (agents_md.name, agents_md.open("rb"), "text/markdown")))
+
+        for skill_path in skills or []:
+            files.append(("skills", (skill_path.name, skill_path.open("rb"), "text/markdown")))
+
+        response = self._client.post(
+            "/agents",
+            data={"name": name, "ttl_seconds": str(ttl_seconds)},
+            files=files,
+        )
         self._raise_for_status(response)
         data = response.json()
         status = data.get("status", "unknown")

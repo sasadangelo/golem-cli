@@ -81,9 +81,20 @@ def cp_status(
 def agent_create(
     config: Path = typer.Option(..., "--config", "-c", help="Path to the runner config YAML."),  # noqa: B008
     ttl: int = typer.Option(3600, "--ttl", "-t", help="Sandbox time-to-live in seconds."),  # noqa: B008
+    agents_md: Path | None = typer.Option(  # noqa: B008
+        None,
+        "--agents-md",
+        help="Optional AGENTS.md file defining agent identity and behaviour.",
+    ),
+    skills: list[Path] = typer.Option(  # noqa: B008
+        [],
+        "--skill",
+        "-s",
+        help="SKILL.md file to upload (repeatable: -s read-logs.md -s summarize.md).",
+    ),
 ) -> None:
     """Deploy a new agent sandbox."""
-    AgentCommand().create(config=config, ttl_seconds=ttl)
+    AgentCommand().create(config=config, ttl_seconds=ttl, agents_md=agents_md, skills=skills)
 
 
 @agent_app.command("list")

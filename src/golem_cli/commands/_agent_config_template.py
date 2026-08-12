@@ -30,6 +30,25 @@ log:
   compression: zip
 
 # ---------------------------------------------------------------------------
+# AGENT IDENTITY & SKILLS (Week 4)
+#
+# Supply these as separate file uploads when running `golem agent create`:
+#
+#   golem agent create \
+#     --config config.yaml \
+#     --agents-md AGENTS.md \
+#     --skill read-logs.md \
+#     --skill summarize.md
+#
+# AGENTS.md  — mounted at /app/AGENTS.md; defines who the agent is and how
+#              it should behave (personality, tone, constraints).
+#
+# SKILL.md   — one file per skill; mounted at /app/skills/<name>.md; injected
+#              into the system message lazily (per turn) when the user's
+#              message matches the skill name.
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
 # LOCAL SMOKE-TEST ONLY — never uncomment in production.
 #
 # Overrides used to run the full client → Control Plane → Runner flow on a
