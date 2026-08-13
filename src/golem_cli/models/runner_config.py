@@ -17,6 +17,7 @@ class AgentConfig:
     endpoint: str = "http://localhost:8000"
     system_prompt: str = "<System prompt that defines the agent behaviour.>"
     enabled_skills: str = "bash,http_check"
+    mcp_servers: list = field(default_factory=list)
 
 
 @dataclass

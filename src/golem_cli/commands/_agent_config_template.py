@@ -15,6 +15,13 @@ agent:
   endpoint: "http://localhost:8000"
   system_prompt: "<System prompt that defines the agent behaviour.>"
   enabled_skills: "bash,http_check"
+  # mcp_servers: list of static MCP server URIs to connect at boot.
+  # The runner calls MultiServerMCPClient with these URIs and registers each
+  # server's tools into the LangGraph tool node automatically.
+  # The MCP server must already be running and reachable from the pod.
+  # Example (kubernetes-mcp-server deployed via Helm):
+  #   mcp_servers:
+  #     - "http://kubernetes-mcp-server.kubernetes-mcp-server.svc.cluster.local:8080"
 llm:
   provider: "<llm-provider>"
   protocol: "<llm-protocol>"
