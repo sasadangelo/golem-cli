@@ -18,6 +18,7 @@ class AgentConfig:
     system_prompt: str = "<System prompt that defines the agent behaviour.>"
     enabled_skills: str = "bash,http_check"
     mcp_servers: list = field(default_factory=list)
+    env_secrets: list = field(default_factory=list)  # list[str] — secret names already in agent namespace
 
 
 @dataclass
@@ -29,6 +30,7 @@ class LLMConfig:
     model: str = "<llm-model>"
     project_id: str = "<llm-project-id>"
     url: str = "<https://llm-api-url>"
+    max_new_tokens: int = 2048
 
 
 @dataclass
