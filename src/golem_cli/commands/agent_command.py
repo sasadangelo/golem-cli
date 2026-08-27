@@ -139,6 +139,58 @@ class AgentCommand(Command):
         typer.echo(f"  streaming   : {caps.get('streaming', False)}")
 
     # ------------------------------------------------------------------
+    # A2A task lifecycle
+    # ------------------------------------------------------------------
+
+    def task_send(self, agent_id: str, message: str) -> None:
+        """Submit a one-shot A2A task to an agent and print the task ID and status.
+
+        Calls POST /agents/{agent_id}/tasks on the Control Plane.  The task is
+        created in ``submitted`` state and executed asynchronously by the runner.
+        Use ``golem agent tasks --agent <id>`` to poll the result.
+
+        Args:
+            agent_id: The agent's unique identifier.
+            message:  The instruction text to send to the agent.
+        """
+        response = self._client.post(
+            f"/agents/{agent_id}/tasks",
+            json={"message": message, "source": "golem-cli"},
+        )
+        self._raise_for_status(response)
+        data = response.json()
+        task_id = data.get("task_id", "")
+        status = data.get("status", "")
+        typer.echo(f"Task submitted: id={task_id}  status={status}")
+        typer.echo(f"Check result with: golem agent tasks --agent {agent_id}")
+
+    def tasks(self, agent_id: str) -> None:
+        """Show the A2A task lifecycle for an agent.
+
+        Queries GET /agents/{agent_id}/tasks on the Control Plane and prints
+        each task with its ID, status, and a short message excerpt.
+
+        Args:
+            agent_id: The agent's unique identifier.
+        """
+        response = self._client.get(f"/agents/{agent_id}/tasks")
+        self._raise_for_status(response)
+        items = response.json()
+        if not items:
+            typer.echo(f"No tasks found for agent {agent_id}.")
+            return
+        typer.echo(f"{'TASK ID':<28}  {'SOURCE':<10}  {'STATUS':<12}  {'UPDATED AT':<21}  MESSAGE")
+        typer.echo("-" * 108)
+        for task in items:
+            task_id = task.get("task_id", "")
+            source = task.get("source", "manual")
+            status = task.get("status", "")
+            updated_at = task.get("updated_at", "")[:19].replace("T", " ")
+            message = task.get("message", "")
+            msg_short = message[:48] + "…" if len(message) > 48 else message
+            typer.echo(f"{task_id:<28}  {source:<10}  {status:<12}  {updated_at:<21}  {msg_short}")
+
+    # ------------------------------------------------------------------
     # Runner-config template
     # ------------------------------------------------------------------
 

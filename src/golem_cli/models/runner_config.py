@@ -19,6 +19,7 @@ class AgentConfig:
     enabled_skills: str = "bash,http_check"
     mcp_servers: list = field(default_factory=list)
     env_secrets: list = field(default_factory=list)  # list[str] — secret names already in agent namespace
+    triggers: list = field(default_factory=list)  # list[dict] — background triggers (timer, cron, webhook)
 
 
 @dataclass

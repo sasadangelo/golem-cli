@@ -3,12 +3,13 @@
 from pathlib import Path
 
 import typer
+from typer.main import Typer
 
 from golem_cli.commands.agent_command import AgentCommand
 from golem_cli.commands.chat_command import ChatCommand
 from golem_cli.commands.cp_command import CpCommand
 
-app = typer.Typer(
+app: Typer = typer.Typer(
     name="golem",
     help="golem — Golem Agent-as-a-Service CLI",
     no_args_is_help=True,
@@ -18,22 +19,22 @@ app = typer.Typer(
 # ---------------------------------------------------------------------------
 # cp sub-app  (control-plane management — no active CP required)
 # ---------------------------------------------------------------------------
-cp_app = typer.Typer(help="Manage control-plane endpoints.", no_args_is_help=True)
-app.add_typer(cp_app, name="cp")
+cp_app: Typer = typer.Typer(help="Manage control-plane endpoints.", no_args_is_help=True)
+app.add_typer(typer_instance=cp_app, name="cp")
 
 # ---------------------------------------------------------------------------
 # agent sub-app
 # ---------------------------------------------------------------------------
-agent_app = typer.Typer(help="Manage agent sandboxes.", no_args_is_help=True)
-app.add_typer(agent_app, name="agent")
+agent_app: Typer = typer.Typer(help="Manage agent sandboxes.", no_args_is_help=True)
+app.add_typer(typer_instance=agent_app, name="agent")
 
 # ---------------------------------------------------------------------------
 # cp commands  (instantiated at module level — no active CP needed)
 # ---------------------------------------------------------------------------
-_cp = CpCommand()
+_cp: CpCommand = CpCommand()
 
 
-@cp_app.command("add")
+@cp_app.command(name="add")
 def cp_add(
     name: str = typer.Option(..., "--name", "-n", help="Unique alias for this control plane."),  # noqa: B008
     url: str = typer.Option(..., "--url", "-u", help="Base URL (e.g. http://host:9000)."),  # noqa: B008
@@ -42,7 +43,7 @@ def cp_add(
     _cp.add(name=name, url=url)
 
 
-@cp_app.command("use")
+@cp_app.command(name="use")
 def cp_use(
     name: str = typer.Option(..., "--name", "-n", help="Alias of the control plane to activate."),  # noqa: B008
 ) -> None:
@@ -50,13 +51,13 @@ def cp_use(
     _cp.use(name=name)
 
 
-@cp_app.command("list")
+@cp_app.command(name="list")
 def cp_list() -> None:
     """List all registered control planes."""
     _cp.list()
 
 
-@cp_app.command("remove")
+@cp_app.command(name="remove")
 def cp_remove(
     name: str = typer.Option(..., "--name", "-n", help="Alias of the control plane to remove."),  # noqa: B008
 ) -> None:
@@ -64,7 +65,7 @@ def cp_remove(
     _cp.remove(name=name)
 
 
-@cp_app.command("status")
+@cp_app.command(name="status")
 def cp_status(
     name: str | None = typer.Option(None, "--name", "-n", help="Alias to check (defaults to active)."),  # noqa: B008
 ) -> None:
@@ -77,7 +78,7 @@ def cp_status(
 # ---------------------------------------------------------------------------
 
 
-@agent_app.command("create")
+@agent_app.command(name="create")
 def agent_create(
     config: Path = typer.Option(..., "--config", "-c", help="Path to the runner config YAML."),  # noqa: B008
     ttl: int = typer.Option(3600, "--ttl", "-t", help="Sandbox time-to-live in seconds."),  # noqa: B008
@@ -103,7 +104,7 @@ def agent_list() -> None:
     AgentCommand().list()
 
 
-@agent_app.command("delete")
+@agent_app.command(name="delete")
 def agent_delete(
     agent_id: str = typer.Option(..., "--id", "-i", help="Agent ID."),  # noqa: B008
 ) -> None:
@@ -111,7 +112,7 @@ def agent_delete(
     AgentCommand().delete(agent_id=agent_id)
 
 
-@agent_app.command("status")
+@agent_app.command(name="status")
 def agent_status(
     agent_id: str = typer.Option(..., "--id", "-i", help="Agent ID."),  # noqa: B008
 ) -> None:
@@ -119,7 +120,7 @@ def agent_status(
     AgentCommand().status(agent_id=agent_id)
 
 
-@agent_app.command("card")
+@agent_app.command(name="card")
 def agent_card(
     agent_id: str = typer.Option(..., "--id", "-i", help="Agent ID."),  # noqa: B008
 ) -> None:
@@ -132,20 +133,44 @@ def agent_card(
 # ---------------------------------------------------------------------------
 
 
-@agent_app.command("config")
+@agent_app.command(name="tasks")
+def agent_tasks(
+    agent_id: str = typer.Option(..., "--agent", "-a", help="Agent ID."),  # noqa: B008
+) -> None:
+    """Show the A2A task lifecycle for an agent."""
+    AgentCommand().tasks(agent_id=agent_id)
+
+
+# ---------------------------------------------------------------------------
+# agent task sub-app
+# ---------------------------------------------------------------------------
+agent_task_app: Typer = typer.Typer(help="Manage individual A2A tasks.", no_args_is_help=True)
+agent_app.add_typer(typer_instance=agent_task_app, name="task")
+
+
+@agent_task_app.command(name="send")
+def agent_task_send(
+    agent_id: str = typer.Option(..., "--agent", "-a", help="Agent ID."),  # noqa: B008
+    message: str = typer.Option(..., "--message", "-m", help="Instruction text for the agent."),  # noqa: B008
+) -> None:
+    """Submit a one-shot A2A task to an agent."""
+    AgentCommand().task_send(agent_id=agent_id, message=message)
+
+
+@agent_app.command(name="config")
 def agent_config(
     generate: bool = typer.Option(False, "--generate", "-g", help="Generate a default runner-config template."),  # noqa: B008
     output: Path = typer.Option(Path("config.yaml"), "--output", "-o", help="Destination file path."),  # noqa: B008
 ) -> None:
     """Manage the agent runner-config template."""
     if not generate:
-        typer.echo("Use --generate to create a default runner-config template.", err=True)
-        raise typer.Exit(1)
+        typer.echo(message="Use --generate to create a default runner-config template.", err=True)
+        raise typer.Exit(code=1)
     from golem_cli.commands._agent_config_template import write_default  # local import — no CP needed
 
     write_default(output)
-    typer.echo(f"Default config written to {output}")
-    typer.echo("Edit the file before running `golem agent create`.")
+    typer.echo(message=f"Default config written to {output}")
+    typer.echo(message="Edit the file before running `golem agent create`.")
 
 
 # ---------------------------------------------------------------------------
@@ -153,7 +178,7 @@ def agent_config(
 # ---------------------------------------------------------------------------
 
 
-@app.command("chat")
+@app.command(name="chat")
 def chat(
     agent_id: str = typer.Option(..., "--id", "-i", help="Agent ID to chat with."),  # noqa: B008
 ) -> None:
