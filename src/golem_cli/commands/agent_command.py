@@ -142,16 +142,18 @@ class AgentCommand(Command):
     # A2A task lifecycle
     # ------------------------------------------------------------------
 
-    def task_send(self, agent_id: str, message: str) -> None:
-        """Submit a one-shot A2A task to an agent and print the task ID and status.
+    def task_send(self, agent_id: str, message: str, wait: bool = False, timeout: int = 30) -> None:
+        """Submit a one-shot A2A task to an agent (fire-and-forget by default).
 
-        Calls POST /agents/{agent_id}/tasks on the Control Plane.  The task is
-        created in ``submitted`` state and executed asynchronously by the runner.
-        Use ``golem agent tasks --agent <id>`` to poll the result.
+        Calls POST /agents/{agent_id}/tasks on the Control Plane.  By default
+        returns immediately with the task_id.  Pass wait=True to poll until
+        completion or the timeout is reached.
 
         Args:
             agent_id: The agent's unique identifier.
             message:  The instruction text to send to the agent.
+            wait:     If True, poll until the task reaches a terminal state.
+            timeout:  Max seconds to wait when wait=True (default 30).
         """
         response = self._client.post(
             f"/agents/{agent_id}/tasks",
@@ -160,9 +162,51 @@ class AgentCommand(Command):
         self._raise_for_status(response)
         data = response.json()
         task_id = data.get("task_id", "")
-        status = data.get("status", "")
+        status = data.get("status", "submitted")
         typer.echo(f"Task submitted: id={task_id}  status={status}")
-        typer.echo(f"Check result with: golem agent tasks --agent {agent_id}")
+
+        if not wait:
+            typer.echo(f"Poll result with: golem agent task-get --agent {agent_id} --task {task_id}")
+            return
+
+        import time
+
+        typer.echo(f"Waiting for completion (timeout={timeout}s) ...")
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            time.sleep(3)
+            poll = self._client.get(f"/agents/{agent_id}/tasks/{task_id}")
+            if poll.status_code != 200:
+                continue
+            t = poll.json()
+            st = t.get("status", "")
+            if st == "completed":
+                typer.echo(f"Status: {st}")
+                if t.get("result"):
+                    typer.echo(f"\n{t['result']}")
+                return
+            if st == "failed":
+                typer.echo(f"Status: {st}")
+                if t.get("result"):
+                    typer.echo(f"\n{t['result']}")
+                raise typer.Exit(1)
+            typer.echo(f"  status={st} ...")
+        typer.echo(f"Timed out after {timeout}s — task {task_id} still running.", err=True)
+        raise typer.Exit(1)
+
+    def task_get(self, agent_id: str, task_id: str) -> None:
+        """Show details of a single A2A task.
+
+        Args:
+            agent_id: The agent's unique identifier.
+            task_id:  The task's unique identifier.
+        """
+        response = self._client.get(f"/agents/{agent_id}/tasks/{task_id}")
+        self._raise_for_status(response)
+        data = response.json()
+        typer.echo(f"Task {task_id}  agent={agent_id}  status={data.get('status', 'unknown')}")
+        if data.get("result"):
+            typer.echo(f"\n{data['result']}")
 
     def tasks(self, agent_id: str) -> None:
         """Show the A2A task lifecycle for an agent.

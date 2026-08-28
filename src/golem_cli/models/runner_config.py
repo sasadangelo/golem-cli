@@ -17,6 +17,8 @@ class AgentConfig:
     endpoint: str = "http://localhost:8000"
     system_prompt: str = "<System prompt that defines the agent behaviour.>"
     enabled_skills: str = "bash,http_check"
+    cp_url: str = ""  # Control Plane base URL; required only for agents that delegate via A2A
+    delegation_timeout_seconds: int = 300  # max seconds to wait for a delegated task; A2A agents only
     mcp_servers: list = field(default_factory=list)
     env_secrets: list = field(default_factory=list)  # list[str] — secret names already in agent namespace
     triggers: list = field(default_factory=list)  # list[dict] — background triggers (timer, cron, webhook)

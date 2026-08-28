@@ -15,6 +15,17 @@ agent:
   endpoint: "http://localhost:8000"
   system_prompt: "<System prompt that defines the agent behaviour.>"
   enabled_skills: "bash,http_check"
+  # cp_url: Control Plane base URL for handshake registration and A2A delegation.
+  # Required only for agents that delegate tasks to other agents via the `delegate` skill.
+  # Leave empty (or omit) for standalone agents.
+  # Example:
+  #   cp_url: "http://golem-cp.golem-system.svc.cluster.local:9000"
+  #
+  # delegation_timeout_seconds: max seconds to wait for a delegated A2A task to complete.
+  # Only relevant for agents that use the `delegate` skill. Default: 300.
+  # Example:
+  #   delegation_timeout_seconds: 300
+  #
   # mcp_servers: list of static MCP server URIs to connect at boot.
   # The runner calls MultiServerMCPClient with these URIs and registers each
   # server's tools into the LangGraph tool node automatically.

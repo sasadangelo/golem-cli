@@ -135,6 +135,34 @@ def agent_card(
     AgentCommand().card(agent_id=agent_id)
 
 
+@agent_app.command(name="task-send")
+def agent_task_send(
+    agent_id: str = typer.Option(..., "--agent", "-a", help="Target agent ID."),
+    message: str = typer.Option(..., "--message", "-m", help="Instruction text to send."),
+    wait: bool = typer.Option(False, "--wait", "-w", help="Wait for the task to complete before returning."),
+    timeout: int = typer.Option(30, "--timeout", help="Max seconds to wait when --wait is set."),
+) -> None:
+    """Submit a one-shot A2A task to an agent (fire-and-forget by default; use --wait to poll)."""
+    AgentCommand().task_send(agent_id=agent_id, message=message, wait=wait, timeout=timeout)
+
+
+@agent_app.command(name="task-get")
+def agent_task_get(
+    agent_id: str = typer.Option(..., "--agent", "-a", help="Agent ID."),
+    task_id: str = typer.Option(..., "--task", "-t", help="Task ID."),
+) -> None:
+    """Show details of a single A2A task."""
+    AgentCommand().task_get(agent_id=agent_id, task_id=task_id)
+
+
+@agent_app.command(name="tasks")
+def agent_tasks(
+    agent_id: str = typer.Option(..., "--agent", "-a", help="Agent ID."),
+) -> None:
+    """List A2A tasks for an agent."""
+    AgentCommand().tasks(agent_id=agent_id)
+
+
 # ---------------------------------------------------------------------------
 # agent config command  (no active CP needed — writes a local file)
 # ---------------------------------------------------------------------------
