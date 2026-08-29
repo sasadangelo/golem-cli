@@ -1,124 +1,118 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/sasadangelo/golem-control-plane/main/docs/img/golem-logo.png" alt="Golem CLI" width="300" />
+</p>
+
 # Golem CLI
 
-Command-line client for the **Golem Agent-as-a-Service** platform.
+**Golem CLI** (`golem`) is the command-line client for the [Golem](https://github.com/sasadangelo/golem-control-plane) platform.
 
-`golem` communicates with the Golem Control Plane via REST (`httpx`) for
-agent lifecycle operations and via WebSocket (`websockets`) for interactive
-chat sessions.
+It communicates with the Golem Control Plane via REST (`httpx`) for agent lifecycle operations
+and via WebSocket (`websockets`) for interactive streaming chat sessions.
 
----
-
-## Features
-
-| Feature | Status |
-|---|:---:|
-| Multi-context control plane management (`golem cp add/use/list/remove/status`) | ✅ |
-| Agent sandbox lifecycle — create, list, delete, status (`golem agent create/list/delete/status`) | ✅ |
-| Runner config template generator (`golem agent config --generate`) | ✅ |
-| Interactive WebSocket chat with an agent, with token streaming (`golem chat --id <id>`) | ✅ |
-| Persistent CLI config in `~/.golem/cli/config.yaml` (multi-context, survives restarts) | ✅ |
-| `golem conv` — multi-conversation management (list, new, switch, delete) | 🔜 |
-| `golem agent tasks` — A2A task lifecycle view | 🔜 |
-
----
-
-
-## Requirements
-
-- Python 3.12+
-- [uv](https://docs.astral.sh/uv/) package manager
+> 📖 For the full platform overview, features, roadmap, and demos see the
+> **[Golem Control Plane](https://github.com/sasadangelo/golem-control-plane)** repository.
 
 ---
 
 ## Installation
 
-### 1. Clone the repository
-
 ```bash
+# 1. clone the repository
 git clone https://github.com/sasadangelo/golem-cli.git
 cd golem-cli
-```
 
-### 2. Install the project in editable mode
-
-```bash
+# 2. install dependencies and the golem entry point
 uv sync
 uv pip install -e .
-```
 
-The `golem` binary is now available in your virtualenv.
+# 3. install the golem binary into ~/.local/bin so it is available without 'uv run'
+uv run pip install --target ~/.local/lib/golem .
+ln -sf ~/.local/lib/golem/bin/golem ~/.local/bin/golem
+# ensure ~/.local/bin is on your PATH (add to ~/.zshrc or ~/.bashrc if needed)
+export PATH="$HOME/.local/bin:$PATH"
 
-### 3. Activate the virtualenv (optional — or prefix commands with `uv run`)
-
-```bash
-source .venv/bin/activate
-# or, without activation:
-uv run golem --help
-```
-
----
-
-## Configuration
-
-The CLI reads the Control Plane URL from an environment variable:
-
-| Variable                  | Default                   | Description                    |
-|---------------------------|---------------------------|--------------------------------|
-| `GOLEM_CONTROL_PLANE_URL` | `http://localhost:9000`   | Base URL of the Control Plane  |
-
-```bash
-export GOLEM_CONTROL_PLANE_URL=http://my-control-plane:9000
-```
-
----
-
-## Usage
-
-### Agent commands
-
-```bash
-# Generate a default config template, then customise it
-golem agent config init
-golem agent config init --output my-agent.yaml
-
-# Deploy a new agent sandbox
-golem agent create --name "my-agent" --config config.yaml
-
-# List all agents
-golem agent list
-
-# Show details of a specific agent
-golem agent show --id <agent-id>
-
-# Delete an agent
-golem agent delete --id <agent-id>
-```
-
-### Chat commands
-
-```bash
-# Start a new interactive chat session with an agent
-golem chat new --agent <agent-id>
-
-# Resume an existing conversation
-golem chat switch --agent <agent-id> --id <chat-id>
-
-# List all conversations for an agent
-golem chat list --agent <agent-id>
-
-# Delete a conversation
-golem chat delete --id <chat-id>
-```
-
-### Help
-
-Every command and subcommand supports `--help`:
-
-```bash
+# verify
 golem --help
-golem agent --help
-golem agent config --help
-golem chat --help
+```
+
+---
+
+## Getting Started
+
+The CLI needs to know which Control Plane to talk to.
+Register it once, then all commands resolve it automatically:
+
+```bash
+# point at a locally running Control Plane
+golem cp add --name local --url http://localhost:9000
+golem cp use --name local
+
+# deploy an agent
+golem agent create --config my-agent/config.yaml
+
+# chat with it
+golem chat --id my-agent-001
+```
+
+See **[docs/CommandReference.md](docs/CommandReference.md)** for the full command reference and usage examples.
+
+---
+
+## How the CLI is Configured
+
+The CLI stores its state in `~/.golem/cli/config.yaml` — no environment variables required.
+
+```yaml
+active: "local"
+control_planes:
+  - name: "local"
+    url:  "http://localhost:9000"
+  - name: "prod"
+    url:  "https://golem.example.com"
+```
+
+Use `golem cp` to manage this file:
+
+```bash
+golem cp add  --name prod --url https://golem.example.com
+golem cp use  --name prod
+golem cp list
+golem cp remove --name local
+golem cp status            # health-check the active control plane
+```
+
+If no active control plane is set, every command that requires the API fails immediately with a clear message.
+
+---
+
+## Command Reference
+
+👉 **[docs/CommandReference.md](docs/CommandReference.md)** — full command table, options, and usage examples for every command group.
+
+---
+
+## Project Layout
+
+```
+golem-cli/
+├── pyproject.toml                         # entry point: golem = "golem_cli.cli:main"
+├── uv.lock                                # reproducible lockfile
+├── docs/
+│   ├── CommandReference.md                # full command table and usage examples
+│   └── cli-design.md                      # design rationale, domain model, architecture
+└── src/
+    └── golem_cli/
+        ├── cli.py                         # Typer wiring only — no business logic
+        ├── config.py                      # ~/.golem/cli/config.yaml I/O
+        ├── commands/
+        │   ├── base.py                    # Command ABC
+        │   ├── agent_command.py           # golem agent *
+        │   ├── chat_command.py            # golem chat *
+        │   ├── conversation_command.py    # golem conv *
+        │   ├── cp_command.py              # golem cp *
+        │   └── _agent_config_template.py  # default runner-config data + writer
+        └── models/
+            └── runner_config.py           # RunnerConfig Pydantic model
 ```
 
 ---
@@ -126,45 +120,24 @@ golem chat --help
 ## Development
 
 ```bash
-# Install dev dependencies
+# install dev dependencies
 uv sync --group dev
 
-# Run linter + formatter
+# lint + format
 uv run ruff check . && uv run ruff format .
 
-# Type-check
+# type-check
 uv run mypy src/
 
-# Run tests
+# tests
 uv run pytest tests/
-```
 
-### Pre-commit hooks
-
-```bash
+# pre-commit hooks
 uv run pre-commit install
 ```
 
 ---
 
-## Project structure
+## License
 
-```
-golem-cli/
-├── pyproject.toml              ← entry point, dependencies, tool config
-├── README.md
-├── docs/
-│   └── cli-design.md           ← domain model, command design, architecture
-└── src/
-    └── golem_cli/
-        ├── __init__.py
-        ├── cli.py              ← Typer wiring only (no business logic)
-        └── commands/
-            ├── __init__.py
-            ├── base.py         ← Marker ABC
-            ├── agent_command.py
-            └── chat_command.py
-```
-
-See [`docs/cli-design.md`](docs/cli-design.md) for the full design rationale,
-domain diagram, command table, and architecture overview.
+MIT

@@ -117,7 +117,7 @@ or `golem cp add` to register a new one.
 | `cp`           | `list`     | —                                                                           | List all registered control planes                 |
 | `cp`           | `remove`   | `--name/-n` (str, req)                                                      | Remove a registered control plane                  |
 | `cp`           | `status`   | `--name/-n` (str, optional, default: active)                                | Check if a control plane is healthy                |
-| `agent`        | `create`   | `--name/-n` (str, req), `--config/-c` (path, req), `--ttl/-t` (int, 3600)  | Deploy a new agent sandbox (multipart upload)      |
+| `agent`        | `create`   | `--name/-n` (str, req), `--config/-c` (path, req), `--ttl/-t` (int, optional — omit for persistent) | Deploy a new agent sandbox (multipart upload) |
 | `agent`        | `list`     | —                                                                           | List all agents                                    |
 | `agent`        | `show`     | `--id/-i` (str, req)                                                        | Show agent details                                 |
 | `agent`        | `delete`   | `--id/-i` (str, req)                                                        | Delete an agent                                    |
@@ -145,8 +145,8 @@ golem agent config init
 golem agent config init --output my-runner.yaml
 
 # --- Agent lifecycle (requires active CP) ---
-golem agent create --name "my-agent" --config config.yaml
-golem agent create --name "my-agent" --config config.yaml --ttl 7200
+golem agent create --name "my-agent" --config config.yaml            # persistent (never expires)
+golem agent create --name "my-agent" --config config.yaml --ttl 3600 # ephemeral — deleted after 1 hour
 golem agent list
 golem agent show --id abc123
 golem agent status --id abc123

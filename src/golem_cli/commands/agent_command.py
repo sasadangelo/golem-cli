@@ -45,7 +45,7 @@ class AgentCommand(Command):
     def create(
         self,
         config: Path,
-        ttl_seconds: int,
+        ttl_seconds: int | None = None,
         agents_md: Path | None = None,
         skills: list[Path] | None = None,
     ) -> None:
@@ -53,7 +53,7 @@ class AgentCommand(Command):
 
         Args:
             config:      Path to the runner YAML configuration file.
-            ttl_seconds: Sandbox time-to-live in seconds.
+            ttl_seconds: Sandbox TTL in seconds. None means the sandbox never expires automatically.
             agents_md:   Optional path to an AGENTS.md file mounted at /app/AGENTS.md.
             skills:      Optional list of SKILL.md file paths; each is mounted at
                          /app/skills/<stem>.md inside the pod.
@@ -72,9 +72,13 @@ class AgentCommand(Command):
         for skill_path in skills or []:
             files.append(("skills", (skill_path.name, skill_path.open("rb"), "text/markdown")))
 
+        form_data: dict[str, str] = {"name": name}
+        if ttl_seconds is not None:
+            form_data["ttl_seconds"] = str(ttl_seconds)
+
         response = self._client.post(
             "/agents",
-            data={"name": name, "ttl_seconds": str(ttl_seconds)},
+            data=form_data,
             files=files,
         )
         self._raise_for_status(response)

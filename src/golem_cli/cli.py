@@ -88,7 +88,12 @@ def cp_status(
 @agent_app.command(name="create")
 def agent_create(
     config: Path = typer.Option(..., "--config", "-c", help="Path to the runner config YAML."),  # noqa: B008
-    ttl: int = typer.Option(3600, "--ttl", "-t", help="Sandbox time-to-live in seconds."),
+    ttl: int | None = typer.Option(
+        None,
+        "--ttl",
+        "-t",
+        help="Sandbox TTL in seconds. Omit for a persistent sandbox that never expires automatically.",
+    ),
     agents_md: Path | None = typer.Option(  # noqa: B008
         None,
         "--agents-md",
