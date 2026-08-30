@@ -3,6 +3,7 @@
 import asyncio
 import sys
 
+import httpx
 import typer
 import websockets
 from websockets.exceptions import ConnectionClosedOK
@@ -22,9 +23,9 @@ class ChatCommand(Command):
     def connect(self, agent_id: str, conversation_id: str | None = None, name: str | None = None) -> None:
         """Open an interactive WebSocket chat session with an agent.
 
-        When ``conversation_id`` is provided, the session resumes that conversation's
-        isolated history on the runner.  Otherwise, a new conversation is automatically
-        created on the Control Plane.
+        Checks that the agent is running before creating a conversation or
+        opening the WebSocket, so orphaned conversations are never created
+        and the user gets a clear message instead of an opaque error.
 
         Args:
             agent_id:        The agent to chat with.
@@ -37,11 +38,38 @@ class ChatCommand(Command):
             resolved_conv_id = conversation_id
             typer.echo(f"Resuming conversation {resolved_conv_id}")
 
-        # If no conversation_id was specified (default run), automatically create a new conversation
-        # via POST on the Control Plane.
+        # ----------------------------------------------------------------
+        # Step 1 — verify the agent is running before doing anything else.
+        # ----------------------------------------------------------------
         if not resolved_conv_id:
-            import httpx
+            try:
+                with httpx.Client(base_url=self._base_url, timeout=10) as client:
+                    response = client.get(f"/agents/{agent_id}/status")
+                    response.raise_for_status()
+                    status = response.json().get("status", "unknown")
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code == 404:
+                    typer.echo(f"❌ Agent '{agent_id}' not found.", err=True)
+                else:
+                    typer.echo(f"❌ Could not get agent status: {exc}", err=True)
+                raise typer.Exit(code=1) from exc
+            except Exception as exc:  # noqa: BLE001
+                typer.echo(f"❌ Could not reach Control Plane: {exc}", err=True)
+                raise typer.Exit(code=1) from exc
 
+            if status != "running":
+                typer.echo(
+                    f"❌ Agent '{agent_id}' is not ready (status={status}).\n"
+                    f"   Wait for it to start, then retry:\n"
+                    f"     golem agent status --id {agent_id}",
+                    err=True,
+                )
+                raise typer.Exit(code=1)
+
+        # ----------------------------------------------------------------
+        # Step 2 — create conversation only after agent is confirmed running.
+        # ----------------------------------------------------------------
+        if not resolved_conv_id:
             try:
                 with httpx.Client(base_url=self._base_url, timeout=10) as client:
                     response = client.post(f"/agents/{agent_id}/conversations", json={"name": name or ""})
@@ -52,9 +80,10 @@ class ChatCommand(Command):
                         typer.echo(f"Created new conversation {name!r}: {resolved_conv_id}")
                     else:
                         typer.echo(f"Created new conversation: {resolved_conv_id}")
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 typer.echo(
-                    f"Warning: Failed to auto-create conversation ({exc}). Falling back to stateless chat.", err=True
+                    f"Warning: Failed to auto-create conversation ({exc}). Falling back to stateless chat.",
+                    err=True,
                 )
 
         if resolved_conv_id:

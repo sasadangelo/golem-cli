@@ -21,13 +21,10 @@ and via WebSocket (`websockets`) for interactive streaming chat sessions.
 git clone https://github.com/sasadangelo/golem-cli.git
 cd golem-cli
 
-# 2. install dependencies and the golem entry point
-uv sync
-uv pip install -e .
-
-# 3. install the golem binary into ~/.local/bin so it is available without 'uv run'
-uv run pip install --target ~/.local/lib/golem .
-ln -sf ~/.local/lib/golem/bin/golem ~/.local/bin/golem
+# 2. install the golem binary as a uv tool in editable mode so that any change
+#    to the source is reflected immediately without reinstalling
+#    (creates ~/.local/bin/golem automatically)
+uv tool install --editable .
 # ensure ~/.local/bin is on your PATH (add to ~/.zshrc or ~/.bashrc if needed)
 export PATH="$HOME/.local/bin:$PATH"
 
