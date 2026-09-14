@@ -42,25 +42,57 @@ agent:
   #   env_secrets:
   #     - "my-credentials"
   #
-  # triggers: background triggers that fire automatically without a user message.
+  # triggers: background automations that fire automatically without a user message.
   # Supported types: timer, cron, webhook.
+  # Each entry requires a 'task_input' field — the instruction sent to the agent when it fires.
   # Examples:
   #   triggers:
   #     - type: timer
   #       interval_seconds: 30
-  #       message: "Check if http://my-service.svc.cluster.local/health is healthy."
+  #       task_input: "Check if http://my-service.svc.cluster.local/health is healthy."
   #     - type: cron
   #       cron: "0 9 * * 1-5"
-  #       message: "Send the daily standup summary."
+  #       task_input: "Send the daily standup summary."
   #     - type: webhook
-  #       path: "/trigger/my-event"
-  #       message: "Handle incoming event."
+  #       path: "/webhooks/my-event"
+  #       task_input: "Handle incoming event: {body}"
+# ---------------------------------------------------------------------------
+# LLM GATEWAY — provider + protocol selects the backend at boot; no rebuild.
+#
+# IBM WatsonX (default):
+#   provider: watsonx
+#   protocol: watsonx
+#   model: "meta-llama/llama-3-3-70b-instruct"
+#   url: "https://us-south.ml.cloud.ibm.com"
+#   project_id: "<your-watsonx-project-id>"
+#   # API key: set WATSONX_API_KEY env var (never put in YAML)
+#
+# OpenAI (or any OpenAI-compatible: vLLM, LM Studio):
+#   provider: openai
+#   protocol: openai
+#   model: "gpt-4o"
+#   url: "https://api.openai.com/v1"
+#   # API key: set OPENAI_API_KEY or LLM_API_KEY env var
+#
+# Ollama — OpenAI compat layer:
+#   provider: ollama
+#   protocol: openai
+#   model: "llama3"
+#   url: "http://localhost:11434/v1"
+#   # No API key required; set LLM_API_KEY=ollama if the client demands a value
+#
+# Ollama — native API:
+#   provider: ollama
+#   protocol: ollama
+#   model: "llama3"
+#   url: "http://localhost:11434"
+# ---------------------------------------------------------------------------
 llm:
   provider: "<llm-provider>"
   protocol: "<llm-protocol>"
   model: "<llm-model>"
-  project_id: "<llm-project-id>"
   url: "<https://llm-api-url>"
+  project_id: ""   # required only for provider=watsonx
 log:
   level: INFO
   console: true
