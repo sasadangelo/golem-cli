@@ -85,6 +85,14 @@ def cp_status(
 # ---------------------------------------------------------------------------
 
 
+@agent_app.command(name="init")
+def agent_init(
+    name: str = typer.Argument(..., help="Agent name/workspace identifier."),
+) -> None:
+    """Create a named agent workspace in the central registry without starting anything."""
+    AgentCommand().init(name=name)
+
+
 @agent_app.command(name="create")
 def agent_create(
     config: Path = typer.Option(..., "--config", "-c", help="Path to the runner config YAML."),  # noqa: B008

@@ -30,17 +30,21 @@ golem cp remove --name local
 
 ## `golem agent` — Agent Sandbox Lifecycle
 
-All `agent` subcommands require an active control plane (`golem cp use`).
-
 | Subcommand | Options | Description |
 |---|---|---|
+| `agent init` | `NAME` (arg, req) | Create a named agent workspace in the central registry (`~/.golem/agents/<name>/`) without starting anything |
+| `agent list` | — | List all agents in the central registry with their running status |
 | `agent create` | `--config/-c` (path, req), `--agents-md` (path, opt), `--skill/-s` (path, repeatable), `--ttl/-t` (int, opt) | Deploy a new agent sandbox |
-| `agent list` | — | List all agents |
-| `agent show` | `--id/-i` (str, req) | Show details of one agent |
 | `agent delete` | `--id/-i` (str, req) | Delete an agent |
 | `agent status` | `--id/-i` (str, req) | Show health/readiness of a running agent |
 
 ```bash
+# initialize a new agent workspace in ~/.golem/agents/
+golem agent init myapp
+
+# list all workspaces and their running status
+golem agent list
+
 # generate a runner config template, then customise it
 golem agent config init
 golem agent config init --output my-agent.yaml

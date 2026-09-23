@@ -16,13 +16,33 @@ from .base import Command
 class AgentCommand(Command):
     """Encapsulates all agent lifecycle and agent-config operations."""
 
-    def __init__(self) -> None:
-        self._base_url = cfg.get_active_url()
-        self._client = httpx.Client(base_url=self._base_url, timeout=30)
+    def __init__(self, base_url: str | None = None) -> None:
+        if base_url is not None:
+            self._base_url: str | None = base_url
+            self._client: httpx.Client | None = httpx.Client(base_url=self._base_url, timeout=30)
+        else:
+            try:
+                self._base_url = cfg.get_active_url()
+                self._client = httpx.Client(base_url=self._base_url, timeout=30)
+            except typer.Exit:
+                self._base_url = None
+                self._client = None
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    @property
+    def client(self) -> httpx.Client:
+        """Return the HTTP client, raising a helpful error if no active CP is configured."""
+        if self._client is None:
+            typer.echo(
+                "No active control plane. Run `golem cp use --name <name>` to select one, "
+                "or `golem cp add` to register a new one.",
+                err=True,
+            )
+            raise typer.Exit(1)
+        return self._client
 
     @staticmethod
     def _raise_for_status(response: httpx.Response) -> None:
@@ -76,7 +96,7 @@ class AgentCommand(Command):
         if ttl_seconds is not None:
             form_data["ttl_seconds"] = str(ttl_seconds)
 
-        response = self._client.post(
+        response = self.client.post(
             "/agents",
             data=form_data,
             files=files,
@@ -87,18 +107,80 @@ class AgentCommand(Command):
         namespace = data.get("namespace", "unknown")
         typer.echo(f"Agent created: id={data['agent_id']}  namespace={namespace}  name={name}  status={status}")
 
+    def init(self, name: str) -> None:
+        """Create a named agent workspace in the central registry without starting anything.
+
+        Args:
+            name: The unique local agent workspace name.
+        """
+        agents_dir = cfg.GOLEM_PATH / "agents"
+        workspace_dir = agents_dir / name
+
+        if workspace_dir.exists():
+            typer.echo(f"Agent workspace '{name}' already exists at {workspace_dir}.", err=True)
+            return
+
+        workspace_dir.mkdir(parents=True, exist_ok=True)
+        (workspace_dir / "skills").mkdir(parents=True, exist_ok=True)
+
+        # Write config.yaml
+        config_path = workspace_dir / "config.yaml"
+        write_default(config_path, agent_id=name, name=name, version="0.2.0")
+
+        # Write minimal AGENTS.md
+        agents_md_path = workspace_dir / "AGENTS.md"
+        agents_md_path.write_text("You are a helpful assistant.\n")
+
+        typer.echo(f"Agent workspace '{name}' initialized at {workspace_dir}")
+
     def list(self) -> None:
-        """List all agents."""
-        response = self._client.get("/agents")
-        self._raise_for_status(response)
-        agents = response.json()
-        if not agents:
+        """List all agents in the local registry with their running status."""
+        agents_dir = cfg.GOLEM_PATH / "agents"
+        if not agents_dir.exists() or not any(agents_dir.iterdir()):
             typer.echo("No agents found.")
             return
-        typer.echo(f"{'ID':<36}  {'NAMESPACE':<36}  STATUS")
-        typer.echo("-" * 84)
-        for agent in agents:
-            typer.echo(f"{agent['agent_id']:<36}  {agent.get('namespace', ''):<36}  {agent.get('status', '')}")
+
+        # Query CP if available for live running statuses
+        running_statuses: dict[str, str] = {}
+        if self._client is not None:
+            try:
+                response = self._client.get("/agents")
+                if response.status_code == 200:
+                    for item in response.json():
+                        # item has agent_id and status
+                        running_statuses[item.get("agent_id", "")] = item.get("status", "RUNNING")
+            except Exception:  # nosec B110
+                pass
+
+        workspace_entries: list[tuple[str, str, str, str]] = []
+        for path in sorted(agents_dir.iterdir()):
+            if not path.is_dir():
+                continue
+            name = path.name
+            config_file = path / "config.yaml"
+            agent_id = name
+            version = "unknown"
+            if config_file.exists():
+                try:
+                    raw = yaml.safe_load(config_file.read_text()) or {}
+                    agent_section = raw.get("agent", {})
+                    agent_id = str(agent_section.get("id", name))
+                    version = str(agent_section.get("version", "unknown"))
+                except Exception:  # nosec B110
+                    pass
+
+            # Determine running status: RUNNING or STOPPED
+            status = running_statuses.get(agent_id, "STOPPED")
+            workspace_entries.append((name, agent_id, version, status))
+
+        if not workspace_entries:
+            typer.echo("No agents found.")
+            return
+
+        typer.echo(f"{'NAME':<10}  {'ID':<10}  {'VERSION':<8}  STATUS")
+        typer.echo("-" * 42)
+        for name, agent_id, version, status in workspace_entries:
+            typer.echo(f"{name:<10}  {agent_id:<10}  {version:<8}  {status}")
 
     def delete(self, agent_id: str) -> None:
         """Delete an agent.
@@ -106,7 +188,7 @@ class AgentCommand(Command):
         Args:
             agent_id: The agent's unique identifier.
         """
-        response = self._client.delete(f"/agents/{agent_id}")
+        response = self.client.delete(f"/agents/{agent_id}")
         self._raise_for_status(response)
         typer.echo(f"Agent {agent_id} deleted.")
 
@@ -116,7 +198,7 @@ class AgentCommand(Command):
         Args:
             agent_id: The agent's unique identifier.
         """
-        response = self._client.get(f"/agents/{agent_id}/status")
+        response = self.client.get(f"/agents/{agent_id}/status")
         self._raise_for_status(response)
         data = response.json()
         state = data.get("status", "unknown")
@@ -128,7 +210,7 @@ class AgentCommand(Command):
         Args:
             agent_id: The agent's unique identifier.
         """
-        response = self._client.get(f"/agents/{agent_id}/card")
+        response = self.client.get(f"/agents/{agent_id}/card")
         self._raise_for_status(response)
         data = response.json()
         typer.echo(f"Agent Card for {agent_id}:")
@@ -159,7 +241,7 @@ class AgentCommand(Command):
             wait:     If True, poll until the task reaches a terminal state.
             timeout:  Max seconds to wait when wait=True (default 30).
         """
-        response = self._client.post(
+        response = self.client.post(
             f"/agents/{agent_id}/tasks",
             json={"message": message, "source": "golem-cli"},
         )
@@ -179,7 +261,7 @@ class AgentCommand(Command):
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             time.sleep(3)
-            poll = self._client.get(f"/agents/{agent_id}/tasks/{task_id}")
+            poll = self.client.get(f"/agents/{agent_id}/tasks/{task_id}")
             if poll.status_code != 200:
                 continue
             t = poll.json()
@@ -205,7 +287,7 @@ class AgentCommand(Command):
             agent_id: The agent's unique identifier.
             task_id:  The task's unique identifier.
         """
-        response = self._client.get(f"/agents/{agent_id}/tasks/{task_id}")
+        response = self.client.get(f"/agents/{agent_id}/tasks/{task_id}")
         self._raise_for_status(response)
         data = response.json()
         typer.echo(f"Task {task_id}  agent={agent_id}  status={data.get('status', 'unknown')}")
@@ -221,7 +303,7 @@ class AgentCommand(Command):
         Args:
             agent_id: The agent's unique identifier.
         """
-        response = self._client.get(f"/agents/{agent_id}/tasks")
+        response = self.client.get(f"/agents/{agent_id}/tasks")
         self._raise_for_status(response)
         items = response.json()
         if not items:

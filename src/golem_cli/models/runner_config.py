@@ -13,6 +13,7 @@ class AgentConfig:
 
     id: str = "<your-agent-id>"
     name: str = "<Your Agent Name>"
+    version: str = "0.2.0"
     description: str = "<Short description of what this agent does.>"
     endpoint: str = "http://localhost:8000"
     system_prompt: str = "<System prompt that defines the agent behaviour.>"

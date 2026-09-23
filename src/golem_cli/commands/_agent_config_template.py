@@ -11,6 +11,7 @@ _TEMPLATE = """\
 agent:
   id: "<your-agent-id>"
   name: "<Your Agent Name>"
+  version: "0.2.0"
   description: "<Short description of what this agent does.>"
   endpoint: "http://localhost:8000"
   system_prompt: "<System prompt that defines the agent behaviour.>"
@@ -140,6 +141,20 @@ log:
 """
 
 
-def write_default(output: Path) -> None:
-    """Write the default RunnerConfig template to *output*."""
-    output.write_text(_TEMPLATE)
+def write_default(output: Path, agent_id: str | None = None, name: str | None = None, version: str = "0.2.0") -> None:
+    """Write the default RunnerConfig template to *output*.
+
+    Args:
+        output: Destination file path.
+        agent_id: Optional agent ID to populate in template.
+        name: Optional agent name to populate in template.
+        version: Agent runner version (default: "0.2.0").
+    """
+    content = _TEMPLATE
+    if agent_id is not None:
+        content = content.replace('id: "<your-agent-id>"', f'id: "{agent_id}"')
+    if name is not None:
+        content = content.replace('name: "<Your Agent Name>"', f'name: "{name}"')
+    if version != "0.2.0":
+        content = content.replace('version: "0.2.0"', f'version: "{version}"')
+    output.write_text(content)
